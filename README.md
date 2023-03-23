@@ -1,0 +1,1 @@
+Legal blocks contract

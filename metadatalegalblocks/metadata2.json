@@ -1,0 +1,19 @@
+{
+  "name": "Legal Blocks",
+  "description": "Legal Blocks é uma coleção de tokens não fungíveis (NFT) destinados à nossa comunidade.",
+  "image" : "https://ipfs.io/ipfs/QmRVD9aG8zySFeGXSgUq5B3s6vQuTeEf5925AGmHgaEFbe/2.png",
+  "symbol": "LB",
+  "maxSupply": 1000,
+  "contractAddress": "0x123456789abcdefg",
+  "externalLink": "https://legalblocks.com.br",
+  "seller_fee_basis_points": 500,
+  "fee_recipient": "0xA97F337c39cccE66adfeCB2BF99C1DdC54C2D721",
+  "dev": {
+    "name": "Willian Rios",
+    "email": "williangrios@yahoo.com.br"
+  },
+  "properties": {
+    "category": "Memberships",
+    "year": "2"
+  }
+}
