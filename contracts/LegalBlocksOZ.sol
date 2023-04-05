@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity >=0.4.22 <0.9.0;
+pragma solidity 0.8.18;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -7,15 +7,11 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract LegalBlocksOZ is ERC721URIStorage, Ownable {
+contract LegalBlocksTest is ERC721URIStorage, Ownable {
     using Counters for Counters.Counter;
-    Counters.Counter private _tokenIds;
+    Counters.Counter public tokensMinted;
 
-    //collection
-    struct Version{
-        uint firstMint;
-        uint version;
-    }
+    event test (uint mintValue, uint msgValue, uint royalty);
 
     //mint price
     struct MintPrice{
@@ -24,77 +20,63 @@ contract LegalBlocksOZ is ERC721URIStorage, Ownable {
     }
     
     //state variables
-    mapping(address => bool) public whitelist;
-    mapping(address => Version) public versionControl;
+    mapping(address => bool) public whitelisted;
+    mapping(address => uint) public versionControl;
 
     MintPrice private _mintPrice;
-    uint mintPriceInDollar = 500000000;
+    uint public mintPriceInDollar = 500000000;
+    uint public totalSupply = 1000;
 
     address private royaltyReceiver =
-        0x2c3744a7026388a310eEe70AFe8Cf850bAb82411;
-    uint96 private _feeNumerator = 100;
+        0x2B51601fD836f86fFC0089e67d4Fbf837Abc4EF0;
 
-    constructor() ERC721("LegalBlocksOZ", "LB") {
-        _mintPrice = MintPrice(AggregatorV3Interface(0x7bAC85A8a13A4BcD8abb3eB7d6b4d632c5a57676), 8);
+    constructor() ERC721("LB", "LB") {
+        //below mumbai
+        _mintPrice = MintPrice(AggregatorV3Interface(0xd0D5e3DB44DE05E9F294BB0a3bEEaF030DE24Ada), 8);
+        whitelisted[0xc95c906C1A73cd7Ea3BB60aB60ab4eAD50159746]=true;
     }
-
-    // function supportsInterface(
-    //     bytes4 interfaceId
-    // ) public view virtual override(ERC721, ERC2981) returns (bool) {
-    //     return super.supportsInterface(interfaceId);
-    // }
 
     function _burn(uint256 tokenId) internal virtual override {
         super._burn(tokenId);
-        //_resetTokenRoyalty(tokenId);
     }
 
     function burnNFT(uint256 tokenId) public onlyOwner {
         _burn(tokenId);
     }
 
-    function _mintNFT(uint version) private returns (uint256) {
-        _tokenIds.increment();
-        uint256 newItemId = _tokenIds.current();
-        _mint(msg.sender, newItemId);
-        _setTokenURI(newItemId, returnUri(version) );
-        return newItemId;
-    }
-
-    function mintNFT() public onlyWhitelisted(msg.sender) returns (uint256) {
+    function Mint() external payable onlyWhitelisted(msg.sender)  {
+        //checking total supply
+        require(tokensMinted.current() <= totalSupply, "Total supply reached, it is no longer possible to mint.");
         //checking the mint price
-
+        (uint mintPriceInWei) = returnMintPrice();
+        require(mintPriceInWei == msg.value, string(abi.encodePacked("Incorrect value. Actually the value is (wei): ", Strings.toString (mintPriceInWei))));
         //verifying the version that will be minted
-        Version storage vers = versionControl[msg.sender];
-        if (vers.firstMint == 0) {
-            vers.firstMint = block.timestamp;
-            vers.version++;
-        } else {
-            //verifying if allowed to mint the next version
-            require(
-                block.timestamp >=
-                    (vers.firstMint + (vers.version * 2 minutes)),
-                "Only after one year"
-            );
-            vers.version++;
-        }
-        uint256 tokenId = _mintNFT(vers.version);
-        //_setTokenRoyalty(tokenId, royaltyReceiver, _feeNumerator);
-        return tokenId;
+        versionControl[msg.sender] ++;
+        //incrementing tokenId
+        tokensMinted.increment();
+        uint currentToken = tokensMinted.current();
+        //minting
+        _mint(msg.sender, currentToken);
+        _setTokenURI(currentToken, returnUri(versionControl[msg.sender]));
+        //removing from whitelist
+        whitelisted[msg.sender]= false;
+        //sending royaltyes        
+        sendRoyalty((mintPriceInWei/10)/2);
+        emit test(mintPriceInWei, msg.value,((mintPriceInWei/10)/2) );
     }
 
-    function addToWhitelist(address[] memory addresses) public onlyOwner {
+    function addToWhitelist(address[] memory addresses) external onlyOwner {
         uint i = 0;
         while (i < addresses.length) {
-            whitelist[addresses[i]] = true; 
+            whitelisted[addresses[i]] = true; 
             i++;
         }
     }
 
-    function removeFromWhitelist(address[] memory addresses) public onlyOwner {
+    function removeFromWhitelist(address[] memory addresses) external onlyOwner {
         uint i = 0;
         while (i < addresses.length) {
-            delete whitelist[addresses[i]];
+            delete whitelisted[addresses[i]];
             i++;
         }
     }
@@ -102,36 +84,49 @@ contract LegalBlocksOZ is ERC721URIStorage, Ownable {
     function returnMintPrice()
         public
         view
-        returns (uint mintPriceInMatic, uint maticPrice)
+        returns (uint maticPriceOracle)
     {
         (, int maticPriceOracle, , , ) = _mintPrice.priceFeed.latestRoundData();
-        maticPrice = uint(maticPriceOracle) / 1e6; //tirando seis casas decimais
-        uint value = mintPriceInDollar / maticPrice; // convertendo de volta para int
-        value = value / 1e4;
-        value = value * 1e6;
-        return (value, maticPrice);
+        uint res =  uint(maticPriceOracle)/1e2;
+        uint mint =  mintPriceInDollar / res;
+        return uint(mint * 1e16);
     }
 
-    function setMintPriceInDollar(uint newMintPriceInDollar) public onlyOwner {
+    function setMintPriceInDollar(uint newMintPriceInDollar) external onlyOwner {
         mintPriceInDollar = newMintPriceInDollar;
+    }
+
+    function setTotalSupply(uint newTotalSupply) external onlyOwner {
+        totalSupply = newTotalSupply;
     }
 
     function returnUri(uint256 tokenId) private pure returns (string memory){
         return string(
-            abi.encodePacked("https://ipfs.io/ipfs/QmdUpMJNfrDvxsdwdJUoeMDkuYYjVVLENvKXjp2kEkZvkx/metadata", Strings.toString (tokenId), ".json")
+            abi.encodePacked("https://ipfs.io/ipfs/QmWPYCrQ1ZMCnSCEuL1p7hrkMM6eS3kbSY2oDuccH3ryVY/metadata", Strings.toString (tokenId), ".json")
         );
     }
 
+    function getContractBalance() external view returns (uint){
+        return address(this).balance;
+    }
+
+    function withdraw() external onlyOwner {
+        // get the amount of Ether stored in this contract
+        uint amount = address(this).balance;
+        (bool success, ) = payable(owner()).call{value: amount}("");
+        require(success, "Failed to send Ether");
+    }
+
+    function killContract() external onlyOwner {
+        selfdestruct(payable(owner()));
+    }
+
+    function sendRoyalty(uint amount) private {
+        (bool success, ) = payable(royaltyReceiver).call{value: amount}("");
+    }
+
     modifier onlyWhitelisted(address _addr) {
-        require(whitelist[_addr] == true, "You are not whitelisted");
+        require(whitelisted[_addr] == true, "You are not whitelisted");
         _;
     }
 }
-
-//0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
-//0x909eFCa230d4FAA7A985F953E911003e3a4395b9
-//0xc95c906C1A73cd7Ea3BB60aB60ab4eAD50159746
-//[0xc95c906C1A73cd7Ea3BB60aB60ab4eAD50159746, 0x909eFCa230d4FAA7A985F953E911003e3a4395b9, 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266]
-
-//link prices
-//https://docs.chain.link/data-feeds/price-feeds/addresses/?network=polygon

@@ -1,0 +1,15 @@
+{
+  "name": "Legal Blocks",
+  "description": "LegalBlocks é a primeira e melhor comunidade cripto-jurídica do Brasil. Se você está vendo algum profissional do Direito que tem esse NFT, pode ter certeza que ele está num nível muito superior e vai poder solucionar seu problema relacionado a criptomoedas, smart contracts, NFTs, golpes envolvendo criptomoedas e absolutamente qualquer tema relacionado a blockchain, de forma bastante eficiente e te entregando um altíssimo grau de segurança jurídica e profissionalismo. Quer saber se um profissional do direito, é qualificado para te atender? Ao invés de verificar onde ele estudou, verifique se ele tem um NFT que só pode ser mintado e pago, interagindo diretamente com o contrato e peça para ele te mandar o certificado de membro da LegalBlocks que ele conseguiu emitir 😎",
+  "image": "https://ipfs.io/ipfs/QmRVD9aG8zySFeGXSgUq5B3s6vQuTeEf5925AGmHgaEFbe/2.png",
+  "symbol": "LB",
+  "externalLink": "https://legalblocks.com.br",
+  "dev": {
+    "name": "Willian Rios",
+    "email": "williangrios@yahoo.com.br"
+  },
+  "properties": {
+    "category": "Memberships",
+    "year": "2"
+  }
+}

@@ -1,7 +1,7 @@
 const hre = require ('hardhat');
 	
 async function main() {
-  const LegalBlocks = await hre.ethers.getContractFactory("LegalBlocksOZ");
+  const LegalBlocks = await hre.ethers.getContractFactory("LegalBlocksTest");
   const lb = await LegalBlocks.deploy();
 
   await lb.deployed();
